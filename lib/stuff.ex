@@ -6,15 +6,24 @@ defmodule Stuff do
     start2 = System.monotonic_time(:microsecond)
     flow_paths(directory, prefix, number)
     duration2 = System.monotonic_time(:microsecond) - start2
-    IO.puts ("Standard time to create #{inspect number} path strings: #{inspect duration1} usecS")
-    IO.puts ("Flow(defaults) time to create #{inspect number} path strings: #{inspect duration2} usecS")
+
+    IO.puts(
+      "Standard time to create #{inspect(number)} path strings: #{inspect(duration1)} usecS"
+    )
+
+    IO.puts(
+      "Flow(defaults) time to create #{inspect(number)} path strings: #{inspect(duration2)} usecS"
+    )
   end
+
   def standard_paths(directory, prefix, number) do
     for count <- 1..number do
       do_path_compute(directory, prefix, count)
     end
+
     :ok
   end
+
   def flow_paths(directory, prefix, number) do
     flow = Flow.from_enumerable(1..number) |> Flow.map(&do_path_compute(directory, prefix, &1))
     Flow.run(flow)
@@ -28,7 +37,7 @@ defmodule Stuff do
   def do_path_compute(directory, prefix, value) do
     file_name = prefix <> Integer.to_string(value) <> ".txt"
     path = Path.join(directory, file_name)
-    # IO.puts "Path for #{inspect value}: #{path}"
+    IO.puts("Path for #{inspect(value)}: #{path}")
   end
 
   def create_files_fixed(directory, prefix, number) do
@@ -55,6 +64,7 @@ defmodule Stuff do
 
   def write_contents(path, device, coda_count) do
     IO.write(device, "Test File #{path}")
+
     for _count <- 1..coda_count do
       write_coda(device)
     end

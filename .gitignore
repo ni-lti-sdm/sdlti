@@ -23,3 +23,7 @@ erl_crash.dump
 tdms_to_channels-*.tar
 
 /.elixir_ls/
+
+/data/
+
+sdlti
