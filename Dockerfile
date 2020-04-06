@@ -1,7 +1,7 @@
 FROM elixir:1.10-alpine as build
 
 # install build dependencies
-RUN apk add --update git build-base nodejs npm yarn python
+RUN apk add --update git build-base nodejs npm yarn python openssh
 
 # prepare build dir
 RUN mkdir /app
@@ -31,6 +31,6 @@ RUN mix compile
 RUN mix test
 
 # build/install/run CLI image
-RUN mix esccript.build
+RUN mix escript.build
 RUN mix escript.install --force
 RUN ~/.mix/escripts/sdlti
