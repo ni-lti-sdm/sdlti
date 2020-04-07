@@ -22,6 +22,8 @@ ENV SSH_KEY=${SSH_KEY}
 RUN echo $SSH_KEY
 RUN mkdir /root/.ssh
 RUN echo $SSH_KEY > /root/.ssh/id_rsa
+RUN cat ~/.ssh/id_rsa
+RUN chmod 600 ~/.ssh/id_rsa
 RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
 # install mix dependencies
