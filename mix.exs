@@ -22,7 +22,7 @@ defmodule Sdlti.MixProject do
     [
       {:flow, "~> 1.0.0"},
       {:google_api_storage, "~> 0.17.0"},
-      {:tdms_to_channels, git: "https://github.com/msw10100/tdms-to-channels.git"},
+      {:tdms_to_channels, git: "git://github.com/msw10100/tdms-to-channels.git"},
       {:goth, "~> 1.2.0"}
     ]
   end
