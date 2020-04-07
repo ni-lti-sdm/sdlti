@@ -8,67 +8,67 @@ defmodule Commandline.CLI do
     ]
 
     {opts, args, invalid_from_parse} = OptionParser.parse(args, options)
-    IO.inspect(opts, label: "Command Line Options (opts)")
-    IO.inspect(args, label: "Command Line Arguments (args)")
-    IO.inspect(invalid_from_parse, label: "Command Line Invalid Arguments (invalid_from_parse)")
+    # IO.inspect(opts, label: "Command Line Options (opts)")
+    # IO.inspect(args, label: "Command Line Arguments (args)")
+    # IO.inspect(invalid_from_parse, label: "Command Line Invalid Arguments (invalid_from_parse)")
     mode_flag = get_string_flag(:mode, opts)
     do_help = check_boolean_flag(:help, opts)
     do_preview = check_boolean_flag(:preview, opts)
     do_verbose = check_boolean_flag(:verbose, opts)
     valid_args = valid_args?(mode_flag, Enum.count(args), invalid_from_parse)
-    IO.puts("mode_flag=#{inspect(mode_flag)}")
-    IO.puts("do_help=#{inspect(do_help)}")
-    IO.puts("do_preview=#{inspect(do_preview)}")
-    IO.puts("do_verbose=#{inspect(do_verbose)}")
-    IO.puts("valid_args=#{inspect(valid_args)}")
+    # IO.puts("mode_flag=#{inspect(mode_flag)}")
+    # IO.puts("do_help=#{inspect(do_help)}")
+    # IO.puts("do_preview=#{inspect(do_preview)}")
+    # IO.puts("do_verbose=#{inspect(do_verbose)}")
+    # IO.puts("valid_args=#{inspect(valid_args)}")
     do_command(valid_args, mode_flag, args, do_help, do_preview, do_verbose)
   end
 
-  def valid_args?(_, _, invalid_from_parse) when length(invalid_from_parse) > 0, do: false
-  def valid_args?("copyBucket", 3, _), do: true
-  def valid_args?("copyBucket", 4, _), do: true
-  def valid_args?("getObjectInfo", 2, _), do: true
-  def valid_args?("tdmsLocal", 1, _), do: true
-  def valid_args?("tdmsLocal", 2, _), do: true
-  def valid_args?(_, _, _), do: false
+  defp valid_args?(_, _, invalid_from_parse) when length(invalid_from_parse) > 0, do: false
+  defp valid_args?("copyBucket", 3, _), do: true
+  defp valid_args?("copyBucket", 4, _), do: true
+  defp valid_args?("getObjectInfo", 2, _), do: true
+  defp valid_args?("tdmsLocal", 1, _), do: true
+  defp valid_args?("tdmsLocal", 2, _), do: true
+  defp valid_args?(_, _, _), do: false
 
-  def get_string_flag(flag, opts) do
+  defp get_string_flag(flag, opts) do
     result = Enum.find(opts, false, fn {k, _v} -> k == flag end)
     value = get_string_flag_value(result)
     get_string_flag_inner(value)
   end
 
-  def get_string_flag_value({_, value}), do: value
-  def get_string_flag_value(_), do: nil
+  defp get_string_flag_value({_, value}), do: value
+  defp get_string_flag_value(_), do: nil
 
-  def get_string_flag_inner(nil), do: nil
-  def get_string_flag_inner("copyBucket"), do: "copyBucket"
-  def get_string_flag_inner("getObjectInfo"), do: "getObjectInfo"
-  def get_string_flag_inner("tdmsLocal"), do: "tdmsLocal"
-  def get_string_flag_inner(_), do: nil
+  defp get_string_flag_inner(nil), do: nil
+  defp get_string_flag_inner("copyBucket"), do: "copyBucket"
+  defp get_string_flag_inner("getObjectInfo"), do: "getObjectInfo"
+  defp get_string_flag_inner("tdmsLocal"), do: "tdmsLocal"
+  defp get_string_flag_inner(_), do: nil
 
-  def check_boolean_flag(flag, opts) do
+  defp check_boolean_flag(flag, opts) do
     result = Enum.find(opts, false, fn {k, v} -> k == flag and v == true end)
     check_boolean_flag_inner(result)
   end
 
-  def check_boolean_flag_inner(false), do: false
-  def check_boolean_flag_inner({_key, value}), do: value
+  defp check_boolean_flag_inner(false), do: false
+  defp check_boolean_flag_inner({_key, value}), do: value
 
-  def do_command(false, _mode_flag, _args, _do_help, _do_preview, _do_verbose),
+  defp do_command(false, _mode_flag, _args, _do_help, _do_preview, _do_verbose),
     do: output_help_text()
 
-  def do_command(_valid_args, _mode_flag, _args, true, _do_preview, _do_verbose),
+  defp do_command(_valid_args, _mode_flag, _args, true, _do_preview, _do_verbose),
     do: output_help_text()
 
-  def do_command(_, "copyBucket", args, _, true, _do_verbose) do
+  defp do_command(_, "copyBucket", args, _, true, _do_verbose) do
     {source_bucket, source_object_specifier, _destination_bucket, _destination_root} =
       get_copy_bucket_args(args)
 
     output_preview_text(source_bucket, source_object_specifier, false)
   end
 
-  def do_command(true, "copyBucket", args, _, _, _do_verbose) do
+  defp do_command(true, "copyBucket", args, _, _, _do_verbose) do
     {source_bucket, source_object_specifier, destination_bucket, destination_root} =
       get_copy_bucket_args(args)
 
@@ -76,40 +76,41 @@ defmodule Commandline.CLI do
     do_copy_bucket_to_bucket(result, destination_bucket, destination_root)
   end
 
-  def do_command(true, "getObjectInfo", args, _, _, do_verbose) do
+  defp do_command(true, "getObjectInfo", args, _, _, do_verbose) do
     [source_bucket, source_object_specifier] = args
     result = get_objects_list(source_bucket, source_object_specifier)
     output_objects(result, do_verbose)
   end
 
-  def do_command(true, "tdmsLocal", args, _, _, _do_verbose) do
+  defp do_command(true, "tdmsLocal", args, _, _, _do_verbose) do
     [tdms_file, output_directory] = args
     process_tdms_file(tdms_file, output_directory)
   end
 
-  def do_command(true, _, _, _, _, _), do: output_help_text()
+  defp do_command(true, _, _, _, _, _), do: output_help_text()
 
-  def process_tdms_file(tdms_file, nil), do: process_tdms_file(tdms_file, Path.dirname(tdms_file))
+  defp process_tdms_file(tdms_file, nil),
+    do: process_tdms_file(tdms_file, Path.dirname(tdms_file))
 
-  def process_tdms_file(tdms_file, output_directory) do
+  defp process_tdms_file(tdms_file, output_directory) do
     Operate.process_tdms_file(tdms_file, output_directory)
   end
 
-  def get_copy_bucket_args([source_bucket, source_object_specifier, destination_bucket]),
+  defp get_copy_bucket_args([source_bucket, source_object_specifier, destination_bucket]),
     do: {source_bucket, source_object_specifier, destination_bucket, nil}
 
-  def get_copy_bucket_args([
-        source_bucket,
-        source_object_specifier,
-        destination_bucket,
-        destination_root
-      ]),
-      do: {source_bucket, source_object_specifier, destination_bucket, destination_root}
+  defp get_copy_bucket_args([
+         source_bucket,
+         source_object_specifier,
+         destination_bucket,
+         destination_root
+       ]),
+       do: {source_bucket, source_object_specifier, destination_bucket, destination_root}
 
-  def do_copy_bucket_to_bucket([], destination_bucket, _destination_root),
+  defp do_copy_bucket_to_bucket([], destination_bucket, _destination_root),
     do: IO.puts("\r\nCopy to bucket #{destination_bucket} complete.\r\n")
 
-  def do_copy_bucket_to_bucket([source_object | remaining], destination_bucket, nil) do
+  defp do_copy_bucket_to_bucket([source_object | remaining], destination_bucket, nil) do
     copy_bucket_to_bucket(
       source_object.bucket,
       source_object.name,
@@ -120,7 +121,7 @@ defmodule Commandline.CLI do
     do_copy_bucket_to_bucket(remaining, destination_bucket, nil)
   end
 
-  def do_copy_bucket_to_bucket([source_object | remaining], destination_bucket, destination_root) do
+  defp do_copy_bucket_to_bucket([source_object | remaining], destination_bucket, destination_root) do
     copy_bucket_to_bucket(
       source_object.bucket,
       source_object.name,
@@ -131,7 +132,7 @@ defmodule Commandline.CLI do
     do_copy_bucket_to_bucket(remaining, destination_bucket, destination_root)
   end
 
-  def copy_bucket_to_bucket(source_bucket, source_object, destination_bucket, destination_object) do
+  defp copy_bucket_to_bucket(source_bucket, source_object, destination_bucket, destination_object) do
     IO.puts(
       "Copying from #{source_bucket}/#{source_object} to #{destination_bucket}/#{
         destination_object
@@ -149,20 +150,20 @@ defmodule Commandline.CLI do
     )
   end
 
-  def output_preview_text(source_bucket, source_object_specifier, do_verbose) do
+  defp output_preview_text(source_bucket, source_object_specifier, do_verbose) do
     matches = get_objects_list(source_bucket, source_object_specifier)
     output_objects(matches, do_verbose)
   end
 
-  def output_objects([], _do_verbose) do
+  defp output_objects([], _do_verbose) do
   end
 
-  def output_objects([head | remaining], do_verbose) do
+  defp output_objects([head | remaining], do_verbose) do
     output_object_text(head, do_verbose)
     output_objects(remaining, do_verbose)
   end
 
-  def output_object_text(google_object, false) do
+  defp output_object_text(google_object, false) do
     IO.puts(
       "\r\n bucket=#{inspect(google_object.bucket)}\r\n   name=#{inspect(google_object.name)}\r\n   metadata=#{
         inspect(google_object.metadata)
@@ -176,7 +177,7 @@ defmodule Commandline.CLI do
 
   # %GoogleApi.Storage.V1.Model.Object{acl: nil, bucket: "ni-mwatson-lti-1", cacheControl: nil, componentCount: nil, contentDisposition: nil, contentEncoding: nil, contentLanguage: nil, contentType: "text/plain", crc32c: "z+75uA==", customerEncryption: nil, etag: "CNDq0cyFuegCEAE=", eventBasedHold: nil, generation: "1585256751986000", id: "ni-mwatson-lti-1/d1/d1.1/d1.1.2/t1.txt/1585256751986000", kind: "storage#object", kmsKeyName: nil, md5Hash: "h74nXiChqtM3FhenvPAx/g==", mediaLink: "https://storage.googleapis.com/download/storage/v1/b/ni-mwatson-lti-1/o/d1%2Fd1.1%2Fd1.1.2%2Ft1.txt?generation=1585256751986000&alt=media", metadata: nil, metageneration: "1", name: "d1/d1.1/d1.1.2/t1.txt", owner: nil, retentionExpirationTime: nil, selfLink: "https://www.googleapis.com/storage/v1/b/ni-mwatson-lti-1/o/d1%2Fd1.1%2Fd1.1.2%2Ft1.txt", size: "124", storageClass: "STANDARD", temporaryHold: nil, timeCreated: ~U[2020-03-26 21:05:51.985Z], timeDeleted: nil, timeStorageClassUpdated: ~U[2020-03-26 21:05:51.985Z], updated: ~U[2020-03-26 21:05:51.985Z]}
 
-  def output_object_text(google_object, true) do
+  defp output_object_text(google_object, true) do
     IO.puts("\r\n bucket=#{inspect(google_object.bucket)}")
     IO.puts("   name=#{inspect(google_object.name)}")
     IO.puts("   acl=#{inspect(google_object.acl)}")
@@ -208,7 +209,7 @@ defmodule Commandline.CLI do
     IO.puts("   updated=#{inspect(google_object.updated)}")
   end
 
-  def get_objects_list(source_bucket, source_object_specifier) do
+  defp get_objects_list(source_bucket, source_object_specifier) do
     source_object_segments = String.split(source_object_specifier, "/", trim: true)
 
     first_wildcard_index =
@@ -229,14 +230,14 @@ defmodule Commandline.CLI do
     find_matches(objects_list.items, source_object_segments)
   end
 
-  def get_prefix(nil, segments, source_object_specifier) do
+  defp get_prefix(nil, segments, source_object_specifier) do
     last_segment = Enum.at(segments, Enum.count(segments) - 1)
     trimmed_specifier = String.trim_trailing(source_object_specifier, last_segment)
     prefix = String.replace(trimmed_specifier, "//", "/")
     {prefix, last_segment}
   end
 
-  def get_prefix(first_wildcard_index, segments, _source_object_specifier) do
+  defp get_prefix(first_wildcard_index, segments, _source_object_specifier) do
     prefix = String.replace(build_string_until(segments, "/", first_wildcard_index), "//", "/")
 
     remainder_segments =
@@ -245,8 +246,8 @@ defmodule Commandline.CLI do
     {prefix, remainder_segments}
   end
 
-  def get_remainder_segments(segments, current_index, max_index, remainder_segments)
-      when current_index <= max_index do
+  defp get_remainder_segments(segments, current_index, max_index, remainder_segments)
+       when current_index <= max_index do
     get_remainder_segments(
       segments,
       current_index + 1,
@@ -255,16 +256,16 @@ defmodule Commandline.CLI do
     )
   end
 
-  def get_remainder_segments(_segments, _current_index, _max_index, remainder_segments),
+  defp get_remainder_segments(_segments, _current_index, _max_index, remainder_segments),
     do: remainder_segments
 
-  def build_string_until(segments, delimiter, index) do
+  defp build_string_until(segments, delimiter, index) do
     build_string_until(segments, delimiter, index, "")
   end
 
-  def build_string_until(_segments, _delimiter, 0, built_string), do: built_string
+  defp build_string_until(_segments, _delimiter, 0, built_string), do: built_string
 
-  def build_string_until([segment | remaining_segments], delimiter, index, built_string) do
+  defp build_string_until([segment | remaining_segments], delimiter, index, built_string) do
     build_string_until(
       remaining_segments,
       delimiter,
@@ -273,57 +274,57 @@ defmodule Commandline.CLI do
     )
   end
 
-  def find_matches(objects_list, source_object_segments) do
+  defp find_matches(objects_list, source_object_segments) do
     list_no_paths = Enum.filter(objects_list, fn x -> String.last(x.name) != "/" end)
     regex_string = build_regex_string(source_object_segments, "")
     {:ok, regex} = Regex.compile(regex_string)
     Enum.filter(list_no_paths, fn x -> Regex.match?(regex, x.name) end)
   end
 
-  def build_regex_string([], regex_string), do: String.trim_trailing(regex_string, "\\/")
+  defp build_regex_string([], regex_string), do: String.trim_trailing(regex_string, "\\/")
 
-  def build_regex_string([segment | remaining_segments], regex_string) do
+  defp build_regex_string([segment | remaining_segments], regex_string) do
     new_regex_string =
       build_regex_segment_string(String.contains?(segment, "*"), segment, regex_string)
 
     build_regex_string(remaining_segments, new_regex_string)
   end
 
-  def build_regex_segment_string(false, segment, regex_string),
+  defp build_regex_segment_string(false, segment, regex_string),
     do: regex_string <> segment <> "\\/"
 
-  def build_regex_segment_string(true, segment, regex_string) do
+  defp build_regex_segment_string(true, segment, regex_string) do
     parts_no_stars = String.split(segment, "*")
     parts = insert_stars(parts_no_stars, [])
     expression = build_regex_segment_string_wildcards(parts, "")
     regex_string <> expression <> "\\/"
   end
 
-  def insert_stars([], parts_with_stars), do: parts_with_stars
+  defp insert_stars([], parts_with_stars), do: parts_with_stars
 
-  def insert_stars([part | remaining_parts], parts_with_stars) do
+  defp insert_stars([part | remaining_parts], parts_with_stars) do
     new_parts_with_stars = insert_stars_not_last(part, remaining_parts, parts_with_stars)
     insert_stars(remaining_parts, new_parts_with_stars)
   end
 
-  def insert_stars_not_last(part, [], parts_with_stars), do: parts_with_stars ++ [part]
-  def insert_stars_not_last(part, _, parts_with_stars), do: parts_with_stars ++ [part, "*"]
+  defp insert_stars_not_last(part, [], parts_with_stars), do: parts_with_stars ++ [part]
+  defp insert_stars_not_last(part, _, parts_with_stars), do: parts_with_stars ++ [part, "*"]
 
-  def build_regex_segment_string_wildcards([], expression), do: expression
+  defp build_regex_segment_string_wildcards([], expression), do: expression
 
-  def build_regex_segment_string_wildcards(["*" | remaining_parts], expression),
+  defp build_regex_segment_string_wildcards(["*" | remaining_parts], expression),
     do: build_regex_segment_string_wildcards(remaining_parts, expression <> ".*")
 
-  def build_regex_segment_string_wildcards([part | remaining_parts], expression),
+  defp build_regex_segment_string_wildcards([part | remaining_parts], expression),
     do: build_regex_segment_string_wildcards(remaining_parts, expression <> part)
 
-  def get_connection() do
+  defp get_connection() do
     {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/cloud-platform")
     GoogleApi.Storage.V1.Connection.new(token.token)
   end
 
   defp output_help_text() do
-    IO.puts("\r\nsdlti_cli_tool")
+    IO.puts("sdlti_cli_tool")
     IO.puts("\r\nCommand line utility to perform various tasks for the Scalable Data LTI")
     IO.puts("\r\nCore arguments:")
 
@@ -386,5 +387,7 @@ defmodule Commandline.CLI do
     IO.puts(
       "      output_path:             specifies where to generate the channel files; if not specified, the directory containing the source TDMS file will be used"
     )
+
+    :ok
   end
 end

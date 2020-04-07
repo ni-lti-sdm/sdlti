@@ -1,6 +1,6 @@
 defmodule Sdlti do
   @moduledoc """
-  Documentation for SdltiCliTool.
+  Documentation for Sdlti.
   """
 
   @doc """
@@ -8,7 +8,7 @@ defmodule Sdlti do
 
   ## Examples
 
-      iex> SdltiCliTool.hello()
+      iex> Sdlti.hello()
       :world
 
   """
