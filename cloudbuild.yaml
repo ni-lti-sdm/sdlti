@@ -1,6 +1,4 @@
 steps:  
-# Building image
-# Note: You need a shell to resolve environment variables with $$
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args: [ 
