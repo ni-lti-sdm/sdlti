@@ -1,19 +1,20 @@
 steps:  
 # Building image
 # Note: You need a shell to resolve environment variables with $$
-- name: gcr.io/cloud-builders/gcloud
-  args:
-  - kms
-  - decrypt
-  - --ciphertext-file=github_key.enc
-  - --plaintext-file=github_key
-  - --location=global
-  - --keyring=lti-secrets
-  - --key=msw-github-key
+- name: 'gcr.io/cloud-builders/gcloud'
+  args: [
+          'kms',
+          'decrypt',
+          '--ciphertext-file=github_key.enc',
+          '--plaintext-file=github_key',
+          '--location=global',
+          '--keyring=lti-secrets',
+          '--key=msw-github-key'
+  ]
   
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args: [ 
           '-c',
           'docker build -f Dockerfile .'
-        ]
+  ]
