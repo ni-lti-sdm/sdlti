@@ -17,11 +17,9 @@ ENV MIX_ENV=prod
 ENV SECRET_KEY_BASE=6v+LKpr/9fjcvPUUTEH5syAyMptcOds9P1dCnAYaWlv7dZn48Nchk5004OFw0/NJ
 
 ARG SSH_KEY
-ENV SSH_KEY=${SSH_KEY}
-RUN mkdir /root/.ssh
-RUN echo '$SSH_KEY' > /root/.ssh/id_rsa
-RUN echo '$SSH_KEY'
-RUN cat ~/.ssh/id_rsa
+RUN mkdir /root/.ssh/
+RUN echo "${SSH_KEY}" > /root/.ssh/id_rsa
+
 RUN chmod 600 ~/.ssh/id_rsa
 RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
