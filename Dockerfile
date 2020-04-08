@@ -23,7 +23,7 @@ RUN echo "$THE_KEY" > /root/.ssh/id_rsa
 RUN echo "$SSH_KEY" > /root/.ssh/id_rsa2
 
 RUN chmod 600 /root/.ssh/id_rsa
-RUN ls -la /root/.ssh/id_rsa
+RUN ls -la /root/.ssh/
 RUN ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 
 # install mix dependencies
