@@ -18,7 +18,6 @@ ENV SECRET_KEY_BASE=6v+LKpr/9fjcvPUUTEH5syAyMptcOds9P1dCnAYaWlv7dZn48Nchk5004OFw
 
 ARG SSH_KEY_B64
 ENV SSH_KEY_B64=${SSH_KEY_B64}
-
 RUN mkdir /root/.ssh
 RUN echo $SSH_KEY_B64 >> /root/.ssh/id_rsa.b64
 RUN echo $SSH_KEY_B64
