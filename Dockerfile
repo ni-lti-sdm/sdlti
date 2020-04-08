@@ -20,8 +20,9 @@ ARG SSH_KEY
 RUN mkdir /root/.ssh/
 RUN echo "${SSH_KEY}" > /root/.ssh/id_rsa
 
-RUN chmod 600 ~/.ssh/id_rsa
-RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+RUN chmod 600 /root/.ssh/id_rsa
+RUN ls -la /root/.ssh/id_rsa
+RUN ssh-keyscan -H github.com >> /root/.ssh/known_hosts
 
 # install mix dependencies
 COPY mix.exs mix.lock ./
