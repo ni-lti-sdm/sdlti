@@ -20,7 +20,7 @@ RUN mkdir /root/.ssh/
 
 ARG SSH_KEY_B64
 RUN echo "${SSH_KEY_B64}" > /root/ssh_key.b64
-RUN base64 -d /root/ssk_key.b64 > /root/.ssh/id_rsa
+RUN base64 -d /root/ssh_key.b64 > /root/.ssh/id_rsa
 RUN chmod 600 /root/.ssh/id_rsa
 RUN ls -la /root/.ssh/ 
 RUN ssh-keyscan -H github.com >> /root/.ssh/known_hosts
