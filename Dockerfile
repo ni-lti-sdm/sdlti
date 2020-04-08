@@ -16,11 +16,11 @@ ENV MIX_ENV=prod
 
 ENV SECRET_KEY_BASE=6v+LKpr/9fjcvPUUTEH5syAyMptcOds9P1dCnAYaWlv7dZn48Nchk5004OFw0/NJ
 
-ARG SSH_KEY_B64
-ENV SSH_KEY_B64=${SSH_KEY_B64}
+ARG SSH_KEY
+ENV SSH_KEY=${SSH_KEY}
 RUN mkdir /root/.ssh
-RUN echo '$SSH_KEY_B64' > /root/.ssh/id_rsa.b64
-RUN echo '$SSH_KEY_B64'
+RUN echo '$SSH_KEY' > /root/.ssh/id_rsa.b64
+RUN echo '$SSH_KEY'
 RUN base64 -d ~/.ssh/id_rsa.b64 > ~/.ssh/id_rsa
 RUN cat ~/.ssh/id_rsa
 RUN chmod 600 ~/.ssh/id_rsa
