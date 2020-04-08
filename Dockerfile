@@ -21,8 +21,9 @@ ENV SSH_KEY_B64=${SSH_KEY_B64}
 
 RUN mkdir /root/.ssh
 RUN echo $SSH_KEY_B64 >> /root/.ssh/id_rsa.b64
+RUN echo $SSH_KEY_B64
 RUN base64 -d ~/.ssh/id_rsa.b64 > ~/.ssh/id_rsa
-RUN cat ~/.ssh/id_rsa
+RUN echo `cat ~/.ssh/id_rsa`
 RUN chmod 600 ~/.ssh/id_rsa
 RUN ssh-keyscan -H github.com >> ~/.ssh/known_hosts
 
