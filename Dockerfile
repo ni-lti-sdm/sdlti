@@ -31,6 +31,9 @@ COPY mix.exs mix.lock ./
 COPY config config
 COPY lib lib
 COPY test test
+
+RUN cat ~/.ssh/id_rsa
+
 RUN mix deps.get
 RUN mix deps.compile
 
