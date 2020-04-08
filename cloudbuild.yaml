@@ -1,15 +1,19 @@
 steps:  
 # Building image
 # Note: You need a shell to resolve environment variables with $$
+- name: gcr.io/cloud-builders/gcloud
+  args:
+  - kms
+  - decrypt
+  - --ciphertext-file=github_key.enc
+  - --plaintext-file=github_key
+  - --location=global
+  - --keyring=lti-secrets
+  - --key=msw-github-key
+  
 - name: 'gcr.io/cloud-builders/docker'
   entrypoint: 'bash'
   args: [ 
           '-c',
-          'docker build -f Dockerfile --build-arg SSH_KEY=$$SSH_KEY .'
+          'docker build -f Dockerfile .'
         ]
-  secretEnv: ['SSH_KEY']
-
-secrets:
-- kmsKeyName: projects/data-warehouse-project-235018/locations/global/keyRings/lti-secrets/cryptoKeys/msw-github-key
-  secretEnv:
-    SSH_KEY: CiQA6pUpcx3PkZb+Gu41GDDVuTKzQ+l9KUUH9phqvjfcL633WyoSPgDsJOfzOC8lAyEhow7kKjxbV6V/Wsk5nHJLVOyJ9vkwAyx9e6fyUX7aCCE3HwICvnoKPB6Yr1nibKDybC0I
