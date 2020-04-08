@@ -17,7 +17,7 @@ ENV MIX_ENV=prod
 ENV SECRET_KEY_BASE=6v+LKpr/9fjcvPUUTEH5syAyMptcOds9P1dCnAYaWlv7dZn48Nchk5004OFw0/NJ
 
 RUN mkdir /root/.ssh/
-COPY github_key /root/.ssh/id_rsa
+RUN mv github_key /root/.ssh/id_rsa
 RUN chmod 600 /root/.ssh/id_rsa
 RUN ls -la /root/.ssh/
 RUN ssh-keyscan -H github.com >> /root/.ssh/known_hosts
