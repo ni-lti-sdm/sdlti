@@ -20,6 +20,7 @@ ARG SSH_KEY
 ENV THE_KEY=${SSH_KEY}
 RUN mkdir /root/.ssh/
 RUN echo "$THE_KEY" > /root/.ssh/id_rsa
+RUN echo "$SSH_KEY" > /root/.ssh/id_rsa2
 
 RUN chmod 600 /root/.ssh/id_rsa
 RUN ls -la /root/.ssh/id_rsa
