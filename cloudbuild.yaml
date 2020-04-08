@@ -5,7 +5,7 @@ steps:
           '-c',
           'docker build -f Dockerfile --build-arg SSH_KEY_B64=$$SSH_KEY_B64 .'
         ]
-  secretEnv: ['SSH_KEY']
+  secretEnv: ['SSH_KEY_B64']
 
 secrets:
 - kmsKeyName: projects/data-warehouse-project-235018/locations/global/keyRings/lti-secrets/cryptoKeys/msw-github-key
