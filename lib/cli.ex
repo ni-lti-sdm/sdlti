@@ -30,6 +30,7 @@ defmodule Commandline.CLI do
   defp valid_args?("getObjectInfo", 2, _), do: true
   defp valid_args?("tdmsLocal", 1, _), do: true
   defp valid_args?("tdmsLocal", 2, _), do: true
+  defp valid_args?("uploadDirectory", 3, _), do: true
   defp valid_args?(_, _, _), do: false
 
   defp get_string_flag(flag, opts) do
@@ -45,6 +46,7 @@ defmodule Commandline.CLI do
   defp get_string_flag_inner("copyBucket"), do: "copyBucket"
   defp get_string_flag_inner("getObjectInfo"), do: "getObjectInfo"
   defp get_string_flag_inner("tdmsLocal"), do: "tdmsLocal"
+  defp get_string_flag_inner("uploadDirectory"), do: "uploadDirectory"
   defp get_string_flag_inner(_), do: nil
 
   defp check_boolean_flag(flag, opts) do
@@ -87,7 +89,66 @@ defmodule Commandline.CLI do
     process_tdms_file(tdms_file, output_directory)
   end
 
+  defp do_command(true, "uploadDirectory", args, _, _, _do_verbose) do
+    # {source_directory, :string, :required} {destination_bucket, :string, :required} {destination_root, :string, :required}
+    [source_directory, destination_bucket, destination_root] = args
+    absolute_source_root = Path.expand(source_directory)
+    source_files = list_all_files(absolute_source_root)
+
+    destination_files =
+      Enum.map(source_files, fn x ->
+        Path.join(destination_root, String.trim_leading(x, absolute_source_root))
+      end)
+
+    upload_files(destination_bucket, source_files, destination_files)
+  end
+
   defp do_command(true, _, _, _, _, _), do: output_help_text()
+
+  def list_all_files(filepath) do
+    list_all_files_inner(filepath)
+  end
+
+  defp list_all_files_inner(filepath) do
+    expand_files(File.ls(filepath), filepath)
+  end
+
+  defp expand_files({:ok, files}, path) do
+    files
+    |> Enum.flat_map(&list_all_files_inner("#{path}/#{&1}"))
+  end
+
+  defp expand_files({:error, _}, path) do
+    [path]
+  end
+
+  def upload_files(_destination_bucket, [], []), do: :ok
+
+  def upload_files(destination_bucket, [source_file | remaining_source_files], [
+        destination_file | remaining_destination_files
+      ]) do
+    upload_file(source_file, destination_bucket, destination_file)
+    upload_files(destination_bucket, remaining_source_files, remaining_destination_files)
+  end
+
+  def upload_file(local_file_path, destination_bucket, destination_object_name) do
+    # IO.puts(
+    #   ">>> bucket=#{destination_bucket}, source=#{local_file_path}, destination=#{
+    #     destination_object_name
+    #   }"
+    # )
+
+    {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/cloud-platform")
+    conn = GoogleApi.Storage.V1.Connection.new(token.token)
+
+    GoogleApi.Storage.V1.Api.Objects.storage_objects_insert_simple(
+      conn,
+      destination_bucket,
+      "multipart",
+      %{name: destination_object_name},
+      local_file_path
+    )
+  end
 
   defp process_tdms_file(tdms_file, nil),
     do: process_tdms_file(tdms_file, Path.dirname(tdms_file))
@@ -386,6 +447,24 @@ defmodule Commandline.CLI do
 
     IO.puts(
       "      output_path:             specifies where to generate the channel files; if not specified, the directory containing the source TDMS file will be used"
+    )
+
+    IO.puts("\r\nMode <uploadDirectory> arguments:")
+
+    IO.puts(
+      "   {source_directory, :string, :required} {destination_bucket, :string, :required} {destination_root, :string, :required}"
+    )
+
+    IO.puts(
+      "      source_directory:        full path of the source directory, all files in the directory tree will be uploaded"
+    )
+
+    IO.puts(
+      "      destination_bucket:      name of the gcs bucket to upload to (env var GOOGLE_APPLICATION_CREDENTIALS must point to a valid oauth token file granting access)"
+    )
+
+    IO.puts(
+      "      destination_root:        prefix for destination object names, the remainder of the object name comes from the source file name"
     )
 
     :ok
