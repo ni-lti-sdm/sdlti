@@ -95,12 +95,12 @@ defmodule Commandline.CLI do
     absolute_source_root = Path.expand(source_directory)
     source_files = list_all_files(absolute_source_root)
 
-    destination_files =
+    both_files =
       Enum.map(source_files, fn x ->
-        Path.join(destination_root, String.trim_leading(x, absolute_source_root))
+        {x, Path.join(destination_root, String.trim_leading(x, absolute_source_root))}
       end)
 
-    upload_files(destination_bucket, source_files, destination_files)
+    upload_files(destination_bucket, both_files)
   end
 
   defp do_command(true, _, _, _, _, _), do: output_help_text()
@@ -122,13 +122,11 @@ defmodule Commandline.CLI do
     [path]
   end
 
-  def upload_files(_destination_bucket, [], []), do: :ok
+  def upload_files(_destination_bucket, []), do: :ok
 
-  def upload_files(destination_bucket, [source_file | remaining_source_files], [
-        destination_file | remaining_destination_files
-      ]) do
-    upload_file(source_file, destination_bucket, destination_file)
-    upload_files(destination_bucket, remaining_source_files, remaining_destination_files)
+  def upload_files(destination_bucket, [both_files | remaining_both_files]) do
+    upload_file(elem(both_files, 0), destination_bucket, elem(both_files, 1))
+    upload_files(destination_bucket, remaining_both_files)
   end
 
   def upload_file(local_file_path, destination_bucket, destination_object_name) do
