@@ -90,17 +90,39 @@ defmodule Commandline.CLI do
   end
 
   defp do_command(true, "uploadDirectory", args, _, _, _do_verbose) do
-    # {source_directory, :string, :required} {destination_bucket, :string, :required} {destination_root, :string, :required}
     [source_directory, destination_bucket, destination_root] = args
+
+    IO.puts("Building file list for directory #{source_directory}")
+    start = System.monotonic_time()
     absolute_source_root = Path.expand(source_directory)
     source_files = list_all_files(absolute_source_root)
+    duration = (System.monotonic_time() - start) / 1_000_000
 
-    both_files =
+    IO.puts(
+      "Found #{Enum.count(source_files)} files in the directory tree, elapsed time: #{duration} sec\r\n"
+    )
+
+    IO.puts("Preparing to upload ...")
+
+    params =
       Enum.map(source_files, fn x ->
-        {x, Path.join(destination_root, String.trim_leading(x, absolute_source_root))}
+        {destination_bucket, x,
+         Path.join(destination_root, String.trim_leading(x, absolute_source_root))}
       end)
 
-    upload_files(destination_bucket, both_files)
+    IO.puts("Beginning upload ...")
+
+    start = System.monotonic_time()
+    # upload_files(params)
+    flow =
+      params
+      |> Flow.from_enumerable(min_demand: 8, max_demand: 16)
+      |> Flow.map(&upload_file/1)
+
+    Flow.run(flow)
+
+    duration = (System.monotonic_time() - start) / 1_000_000
+    IO.puts("\r\nUpload count: #{Enum.count(params)} duration: #{duration} sec\r\n")
   end
 
   defp do_command(true, _, _, _, _, _), do: output_help_text()
@@ -114,6 +136,8 @@ defmodule Commandline.CLI do
   end
 
   defp expand_files({:ok, files}, path) do
+    IO.puts("... + #{path}")
+
     files
     |> Enum.flat_map(&list_all_files_inner("#{path}/#{&1}"))
   end
@@ -122,11 +146,25 @@ defmodule Commandline.CLI do
     [path]
   end
 
-  def upload_files(_destination_bucket, []), do: :ok
+  def upload_files([]), do: :ok
 
-  def upload_files(destination_bucket, [both_files | remaining_both_files]) do
-    upload_file(elem(both_files, 0), destination_bucket, elem(both_files, 1))
-    upload_files(destination_bucket, remaining_both_files)
+  def upload_files([params | remaining_params]) do
+    upload_file(elem(params, 1), elem(params, 0), elem(params, 2))
+    upload_files(remaining_params)
+  end
+
+  def upload_file({destination_bucket, local_file_path, destination_object_name}) do
+    IO.puts("... #{destination_object_name} ")
+    {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/cloud-platform")
+    conn = GoogleApi.Storage.V1.Connection.new(token.token)
+
+    GoogleApi.Storage.V1.Api.Objects.storage_objects_insert_simple(
+      conn,
+      destination_bucket,
+      "multipart",
+      %{name: destination_object_name},
+      local_file_path
+    )
   end
 
   def upload_file(local_file_path, destination_bucket, destination_object_name) do
