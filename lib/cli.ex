@@ -3,7 +3,13 @@ defmodule Commandline.CLI do
 
   def main(args) do
     options = [
-      switches: [mode: :string, help: :boolean, preview: :boolean, verbose: :boolean],
+      switches: [
+        mode: :string,
+        repeat: :integer,
+        help: :boolean,
+        preview: :boolean,
+        verbose: :boolean
+      ],
       aliases: [m: :mode, h: :help, p: :preview, v: :verbose]
     ]
 
@@ -12,6 +18,7 @@ defmodule Commandline.CLI do
     # IO.inspect(args, label: "Command Line Arguments (args)")
     # IO.inspect(invalid_from_parse, label: "Command Line Invalid Arguments (invalid_from_parse)")
     mode_flag = get_string_flag(:mode, opts)
+    repeat_count = get_integer_flag(:repeat, opts)
     do_help = check_boolean_flag(:help, opts)
     do_preview = check_boolean_flag(:preview, opts)
     do_verbose = check_boolean_flag(:verbose, opts)
@@ -21,7 +28,7 @@ defmodule Commandline.CLI do
     # IO.puts("do_preview=#{inspect(do_preview)}")
     # IO.puts("do_verbose=#{inspect(do_verbose)}")
     # IO.puts("valid_args=#{inspect(valid_args)}")
-    do_command(valid_args, mode_flag, args, do_help, do_preview, do_verbose)
+    do_command(valid_args, mode_flag, args, {do_help, do_preview, do_verbose, repeat_count})
   end
 
   defp valid_args?(_, _, invalid_from_parse) when length(invalid_from_parse) > 0, do: false
@@ -35,12 +42,12 @@ defmodule Commandline.CLI do
 
   defp get_string_flag(flag, opts) do
     result = Enum.find(opts, false, fn {k, _v} -> k == flag end)
-    value = get_string_flag_value(result)
+    value = get_flag_value(result)
     get_string_flag_inner(value)
   end
 
-  defp get_string_flag_value({_, value}), do: value
-  defp get_string_flag_value(_), do: nil
+  defp get_flag_value({_, value}), do: value
+  defp get_flag_value(_), do: nil
 
   defp get_string_flag_inner(nil), do: nil
   defp get_string_flag_inner("copyBucket"), do: "copyBucket"
@@ -48,6 +55,11 @@ defmodule Commandline.CLI do
   defp get_string_flag_inner("tdmsLocal"), do: "tdmsLocal"
   defp get_string_flag_inner("uploadDirectory"), do: "uploadDirectory"
   defp get_string_flag_inner(_), do: nil
+
+  defp get_integer_flag(flag, opts) do
+    result = Enum.find(opts, false, fn {k, _v} -> k == flag end)
+    get_flag_value(result)
+  end
 
   defp check_boolean_flag(flag, opts) do
     result = Enum.find(opts, false, fn {k, v} -> k == flag and v == true end)
@@ -57,20 +69,25 @@ defmodule Commandline.CLI do
   defp check_boolean_flag_inner(false), do: false
   defp check_boolean_flag_inner({_key, value}), do: value
 
-  defp do_command(false, _mode_flag, _args, _do_help, _do_preview, _do_verbose),
+  defp do_command(false, _mode_flag, _args, _flags),
     do: output_help_text()
 
-  defp do_command(_valid_args, _mode_flag, _args, true, _do_preview, _do_verbose),
-    do: output_help_text()
+  defp do_command(
+         _valid_args,
+         _mode_flag,
+         _args,
+         {true, _do_preview, _do_verbose, _repeate_count}
+       ),
+       do: output_help_text()
 
-  defp do_command(_, "copyBucket", args, _, true, _do_verbose) do
+  defp do_command(_, "copyBucket", args, {_, true, _do_verbose, _}) do
     {source_bucket, source_object_specifier, _destination_bucket, _destination_root} =
       get_copy_bucket_args(args)
 
     output_preview_text(source_bucket, source_object_specifier, false)
   end
 
-  defp do_command(true, "copyBucket", args, _, _, _do_verbose) do
+  defp do_command(true, "copyBucket", args, _) do
     {source_bucket, source_object_specifier, destination_bucket, destination_root} =
       get_copy_bucket_args(args)
 
@@ -78,18 +95,28 @@ defmodule Commandline.CLI do
     do_copy_bucket_to_bucket(result, destination_bucket, destination_root)
   end
 
-  defp do_command(true, "getObjectInfo", args, _, _, do_verbose) do
+  defp do_command(true, "getObjectInfo", args, {_, _, do_verbose, _}) do
     [source_bucket, source_object_specifier] = args
     result = get_objects_list(source_bucket, source_object_specifier)
     output_objects(result, do_verbose)
   end
 
-  defp do_command(true, "tdmsLocal", args, _, _, _do_verbose) do
+  defp do_command(true, "tdmsLocal", args, _) do
     [tdms_file, output_directory] = args
     process_tdms_file(tdms_file, output_directory)
   end
 
-  defp do_command(true, "uploadDirectory", args, _, _, _do_verbose) do
+  defp do_command(true, "uploadDirectory", args, {_, _, _, repeat_count}) do
+    upload_directory(args, repeat_count)
+  end
+
+  defp do_command(true, "uploadDirectory", args, _) do
+    upload_directory(args, 1)
+  end
+
+  defp do_command(true, _, _, _), do: output_help_text()
+
+  defp upload_directory(args, repeat_count) do
     [source_directory, destination_bucket, destination_root] = args
 
     IO.puts("Building file list for directory #{source_directory}")
@@ -105,10 +132,20 @@ defmodule Commandline.CLI do
     IO.puts("Preparing to upload ...")
 
     params =
-      Enum.map(source_files, fn x ->
-        {destination_bucket, x,
-         Path.join(destination_root, String.trim_leading(x, absolute_source_root))}
-      end)
+      List.flatten(
+        for number <- 1..repeat_count do
+          Enum.map(source_files, fn x ->
+            {destination_bucket, x,
+             Path.join(
+               destination_root,
+               "/#{number}_" <> String.trim_leading(x, absolute_source_root <> "/")
+             )}
+          end)
+        end
+      )
+
+    # IO.puts("..repeat_count = #{inspect(repeat_count)}")
+    # IO.puts("..params = #{inspect(params)}")
 
     IO.puts("Beginning upload ...")
 
@@ -124,8 +161,6 @@ defmodule Commandline.CLI do
     duration = (System.monotonic_time() - start) / 1_000_000
     IO.puts("\r\nUpload count: #{Enum.count(params)} duration: #{duration} sec\r\n")
   end
-
-  defp do_command(true, _, _, _, _, _), do: output_help_text()
 
   def list_all_files(filepath) do
     list_all_files_inner(filepath)
@@ -158,13 +193,19 @@ defmodule Commandline.CLI do
     {:ok, token} = Goth.Token.for_scope("https://www.googleapis.com/auth/cloud-platform")
     conn = GoogleApi.Storage.V1.Connection.new(token.token)
 
-    GoogleApi.Storage.V1.Api.Objects.storage_objects_insert_simple(
-      conn,
-      destination_bucket,
-      "multipart",
-      %{name: destination_object_name},
-      local_file_path
-    )
+    IO.puts("... calling GCS")
+
+    result =
+      GoogleApi.Storage.V1.Api.Objects.storage_objects_insert_simple(
+        conn,
+        destination_bucket,
+        "multipart",
+        %{name: destination_object_name},
+        local_file_path
+      )
+
+    # IO.puts("... result=#{inspect(result)}")
+    result
   end
 
   def upload_file(local_file_path, destination_bucket, destination_object_name) do
@@ -426,9 +467,10 @@ defmodule Commandline.CLI do
     IO.puts("\r\nCore arguments:")
 
     IO.puts("   --mode|-m <mode> (required)")
-    IO.puts("      copyBucket:    Copy objects from one gcs bucket to another")
-    IO.puts("      getObjectInfo: Print info about selected gcs objects from a gcs bucket")
-    IO.puts("      tdmsLocal:     Process local TDMS file")
+    IO.puts("      copyBucket:      Copy objects from one gcs bucket to another")
+    IO.puts("      getObjectInfo:   Print info about selected gcs objects from a gcs bucket")
+    IO.puts("      tdmsLocal:       Process local TDMS file")
+    IO.puts("      uploadDircetory: Upload/clone N times a directory of files to a GCS bucket")
     IO.puts("   --help|-h (optional)")
     IO.puts("\r\nMode <copyBucket> arguments:")
 
@@ -488,7 +530,7 @@ defmodule Commandline.CLI do
     IO.puts("\r\nMode <uploadDirectory> arguments:")
 
     IO.puts(
-      "   {source_directory, :string, :required} {destination_bucket, :string, :required} {destination_root, :string, :required}"
+      "   [--repeat <count>] {source_directory, :string, :required} {destination_bucket, :string, :required} {destination_root, :string, :required}"
     )
 
     IO.puts(
@@ -501,6 +543,10 @@ defmodule Commandline.CLI do
 
     IO.puts(
       "      destination_root:        prefix for destination object names, the remainder of the object name comes from the source file name"
+    )
+
+    IO.puts(
+      "      --repeat <count>:        (optional) if specified, the contents of the source directory will be sent along with <count> clones."
     )
 
     :ok
