@@ -1,5 +1,6 @@
 defmodule Commandline.CLI do
   alias TDMS.Operate
+  require Logger
 
   def main(args) do
     options = [
@@ -8,27 +9,34 @@ defmodule Commandline.CLI do
         repeat: :integer,
         help: :boolean,
         preview: :boolean,
-        verbose: :boolean
+        verbose: :boolean,
+        file_mode: :boolean
       ],
-      aliases: [m: :mode, h: :help, p: :preview, v: :verbose]
+      aliases: [m: :mode, h: :help, p: :preview, v: :verbose, f: :file_mode]
     ]
 
     {opts, args, invalid_from_parse} = OptionParser.parse(args, options)
-    # IO.inspect(opts, label: "Command Line Options (opts)")
-    # IO.inspect(args, label: "Command Line Arguments (args)")
-    # IO.inspect(invalid_from_parse, label: "Command Line Invalid Arguments (invalid_from_parse)")
+    IO.inspect(opts, label: "Command Line Options (opts)")
+    IO.inspect(args, label: "Command Line Arguments (args)")
+    IO.inspect(invalid_from_parse, label: "Command Line Invalid Arguments (invalid_from_parse)")
     mode_flag = get_string_flag(:mode, opts)
     repeat_count = get_integer_flag(:repeat, opts)
     do_help = check_boolean_flag(:help, opts)
     do_preview = check_boolean_flag(:preview, opts)
     do_verbose = check_boolean_flag(:verbose, opts)
+    do_file_mode = check_boolean_flag(:file_mode, opts)
     valid_args = valid_args?(mode_flag, Enum.count(args), invalid_from_parse)
     # IO.puts("mode_flag=#{inspect(mode_flag)}")
     # IO.puts("do_help=#{inspect(do_help)}")
     # IO.puts("do_preview=#{inspect(do_preview)}")
     # IO.puts("do_verbose=#{inspect(do_verbose)}")
     # IO.puts("valid_args=#{inspect(valid_args)}")
-    do_command(valid_args, mode_flag, args, {do_help, do_preview, do_verbose, repeat_count})
+    do_command(
+      valid_args,
+      mode_flag,
+      args,
+      {do_help, do_preview, do_verbose, repeat_count, do_file_mode}
+    )
   end
 
   defp valid_args?(_, _, invalid_from_parse) when length(invalid_from_parse) > 0, do: false
@@ -38,6 +46,8 @@ defmodule Commandline.CLI do
   defp valid_args?("tdmsLocal", 1, _), do: true
   defp valid_args?("tdmsLocal", 2, _), do: true
   defp valid_args?("uploadDirectory", 3, _), do: true
+  defp valid_args?("getStats", 2, _), do: true
+  defp valid_args?("getStats", 3, _), do: true
   defp valid_args?(_, _, _), do: false
 
   defp get_string_flag(flag, opts) do
@@ -50,6 +60,7 @@ defmodule Commandline.CLI do
   defp get_flag_value(_), do: nil
 
   defp get_string_flag_inner(nil), do: nil
+  defp get_string_flag_inner("getStats"), do: "getStats"
   defp get_string_flag_inner("copyBucket"), do: "copyBucket"
   defp get_string_flag_inner("getObjectInfo"), do: "getObjectInfo"
   defp get_string_flag_inner("tdmsLocal"), do: "tdmsLocal"
@@ -76,11 +87,16 @@ defmodule Commandline.CLI do
          _valid_args,
          _mode_flag,
          _args,
-         {true, _do_preview, _do_verbose, _repeate_count}
+         {true, _do_preview, _do_verbose, _repeat_count, _do_flag_mode}
        ),
        do: output_help_text()
 
-  defp do_command(_, "copyBucket", args, {_, true, _do_verbose, _}) do
+  defp do_command(true, "getStats", args, {_, _, _, _, do_file_mode}) do
+    {bq_table_root, output_file_suffix, working_directory} = get_get_stats_args(args)
+    do_get_stats(bq_table_root, output_file_suffix, working_directory, do_file_mode)
+  end
+
+  defp do_command(_, "copyBucket", args, {_, true, _do_verbose, _, _}) do
     {source_bucket, source_object_specifier, _destination_bucket, _destination_root} =
       get_copy_bucket_args(args)
 
@@ -95,7 +111,7 @@ defmodule Commandline.CLI do
     do_copy_bucket_to_bucket(result, destination_bucket, destination_root)
   end
 
-  defp do_command(true, "getObjectInfo", args, {_, _, do_verbose, _}) do
+  defp do_command(true, "getObjectInfo", args, {_, _, do_verbose, _, _}) do
     [source_bucket, source_object_specifier] = args
     result = get_objects_list(source_bucket, source_object_specifier)
     output_objects(result, do_verbose)
@@ -106,7 +122,7 @@ defmodule Commandline.CLI do
     process_tdms_file(tdms_file, output_directory)
   end
 
-  defp do_command(true, "uploadDirectory", args, {_, _, _, repeat_count}) do
+  defp do_command(true, "uploadDirectory", args, {_, _, _, repeat_count, _}) do
     upload_directory(args, repeat_count)
   end
 
@@ -115,6 +131,151 @@ defmodule Commandline.CLI do
   end
 
   defp do_command(true, _, _, _), do: output_help_text()
+
+  defp do_get_stats(bq_table_root, output_file_suffix, working_directory, do_file_mode) do
+    Logger.info(
+      "getStats do_file_mode=#{inspect(do_file_mode)} #{bq_table_root} #{output_file_suffix} #{
+        working_directory
+      }"
+    )
+
+    ingest_phase_1_stats_csv_file_name = "ingest-phase-1-stats." <> output_file_suffix <> ".csv"
+
+    ingest_phase_1_stats_csv_path =
+      Path.join(working_directory, ingest_phase_1_stats_csv_file_name)
+
+    ingest_batch_metadata_batch_stats_csv_file_name =
+      "ingest-batch-metadata-batch-stats." <> output_file_suffix <> ".csv"
+
+    ingest_batch_metadata_batch_stats_csv_path =
+      Path.join(working_directory, ingest_batch_metadata_batch_stats_csv_file_name)
+
+    ingest_batch_metadata_file_stats_csv_file_name =
+      "ingest-batch-metadata-file-stats." <> output_file_suffix <> ".csv"
+
+    ingest_batch_metadata_file_stats_csv_path =
+      Path.join(working_directory, ingest_batch_metadata_file_stats_csv_file_name)
+
+    ingest_channels_to_bq_batch_stats_csv_file_name =
+      "ingest-channels-to-bq-batch-stats." <> output_file_suffix <> ".csv"
+
+    ingest_channels_to_bq_batch_stats_csv_path =
+      Path.join(working_directory, ingest_channels_to_bq_batch_stats_csv_file_name)
+
+    ingest_channels_to_bq_file_stats_csv_file_name =
+      "ingest-channels-to-bq-file-stats." <> output_file_suffix <> ".csv"
+
+    ingest_channels_to_bq_file_stats_csv_path =
+      Path.join(working_directory, ingest_channels_to_bq_file_stats_csv_file_name)
+
+    ingest_metadata_to_bq_chunk_stats_csv_file_name =
+      "ingest-metadata-to-bq" <> output_file_suffix <> ".csv"
+
+    ingest_metadata_to_bq_chunk_stats_csv_path =
+      Path.join(working_directory, ingest_metadata_to_bq_chunk_stats_csv_file_name)
+
+    stats_map =
+      %{}
+      |> Map.put(
+        :ingest_phase_1,
+        {ingest_phase_1_stats_csv_file_name, ingest_phase_1_stats_csv_path, %{}}
+      )
+      |> Map.put(
+        :ingest_batch_metadata_batch,
+        {ingest_batch_metadata_batch_stats_csv_file_name,
+         ingest_batch_metadata_batch_stats_csv_path, %{}}
+      )
+      |> Map.put(
+        :ingest_batch_metadata_file,
+        {ingest_batch_metadata_file_stats_csv_file_name,
+         ingest_batch_metadata_file_stats_csv_path, %{}}
+      )
+      |> Map.put(
+        :ingest_channels_to_bq_batch,
+        {ingest_channels_to_bq_batch_stats_csv_file_name,
+         ingest_channels_to_bq_batch_stats_csv_path, %{}}
+      )
+      |> Map.put(
+        :ingest_channels_to_bq_file,
+        {ingest_channels_to_bq_file_stats_csv_file_name,
+         ingest_channels_to_bq_file_stats_csv_path, %{}}
+      )
+      |> Map.put(
+        :ingest_metadata_to_bq_chunk,
+        {ingest_metadata_to_bq_chunk_stats_csv_file_name,
+         ingest_metadata_to_bq_chunk_stats_csv_path, %{}}
+      )
+
+    do_get_stats(bq_table_root, output_file_suffix, working_directory, stats_map, do_file_mode)
+  end
+
+  defp file_process_ingest_phase_1(stats_map) do
+    ingest_phase_1_tuple = stats_map.ingest_phase_1
+    path = elem(ingest_phase_1_tuple, 1)
+    ingest_phase_1_stats = read_ingest_phase_1_csv(path)
+
+    %{
+      stats_map
+      | ingest_phase_1:
+          {elem(ingest_phase_1_tuple, 0), elem(ingest_phase_1_tuple, 1), ingest_phase_1_stats}
+    }
+  end
+
+  defp read_ingest_phase_1_csv(path) do
+    stream =
+      File.stream!(path)
+      |> Stream.map(&String.trim(&1))
+      |> Stream.map(&String.split(&1, ","))
+
+    IO.puts("\r\n AAAA.1 stream=#{inspect(stream)}")
+
+    result = Enum.to_list(stream)
+    IO.puts("\r\n AAAA.2 result=#{inspect(result)}")
+  end
+
+  defp do_get_stats(bq_table_root, output_file_suffix, working_directory, stats_map, true) do
+    Logger.info("getStats(file mode) #{bq_table_root} #{output_file_suffix} #{working_directory}")
+    Logger.info("getStats(file mode) stats_map=#{inspect(stats_map)}")
+    stats_map = file_process_ingest_phase_1(stats_map)
+    Logger.info("getStats(file mode) stats_map=#{inspect(stats_map)}")
+  end
+
+  defp do_get_stats(bq_table_root, output_file_suffix, working_directory, stats_map, false) do
+    Logger.info(
+      "getStats(Kafka mode) #{bq_table_root} #{output_file_suffix} #{working_directory}"
+    )
+
+    Logger.info("getStats(Kafka mode) stats_map=#{inspect(stats_map)}")
+
+    # import Supervisor.Spec
+
+    # Logger.info("Kafka Consumers: STARTING")
+    # Logger.info("Kafka Topics To Consume: #{inspect(@stats_topics)}")
+
+    # consumer_group_opts = [
+    #   # setting for the ConsumerGroup
+    #   #
+    #   heartbeat_interval: 1_000,
+    #   # this setting will be forwarded to the GenConsumer
+    #   commit_interval: 1_000
+    # ]
+
+    # children = [
+    #   supervisor(
+    #     KafkaEx.ConsumerGroup,
+    #     [
+    #       Sdlti.BatchMetadataBatchStats.GenConsumer,
+    #       "ingest-batch-metadata-consumer-group",
+    #       ["ingest-batch-metadata-batch-stats"],
+    #       consumer_group_opts
+    #     ],
+    #     id: "topic-ingest-batch-metadata-batch"
+    #   )
+    # ]
+
+    # Supervisor.start_link(children, strategy: :one_for_one)
+    # Logger.info("Kafka Consumers: STARTED")
+  end
 
   defp upload_directory(args, repeat_count) do
     [source_directory, destination_bucket, destination_root] = args
@@ -233,6 +394,19 @@ defmodule Commandline.CLI do
   defp process_tdms_file(tdms_file, output_directory) do
     Operate.process_tdms_file(tdms_file, output_directory)
   end
+
+  defp get_get_stats_args([
+         bq_table_root,
+         output_file_suffix,
+         working_directory
+       ]),
+       do: {bq_table_root, output_file_suffix, working_directory}
+
+  defp get_get_stats_args([
+         bq_table_root,
+         output_file_suffix
+       ]),
+       do: {bq_table_root, output_file_suffix, "./"}
 
   defp get_copy_bucket_args([source_bucket, source_object_specifier, destination_bucket]),
     do: {source_bucket, source_object_specifier, destination_bucket, nil}
@@ -467,11 +641,32 @@ defmodule Commandline.CLI do
     IO.puts("\r\nCore arguments:")
 
     IO.puts("   --mode|-m <mode> (required)")
+
+    IO.puts(
+      "      getStats:        Create csv files from each of the stats Kafka topics, output summary file."
+    )
+
     IO.puts("      copyBucket:      Copy objects from one gcs bucket to another")
     IO.puts("      getObjectInfo:   Print info about selected gcs objects from a gcs bucket")
     IO.puts("      tdmsLocal:       Process local TDMS file")
     IO.puts("      uploadDircetory: Upload/clone N times a directory of files to a GCS bucket")
     IO.puts("   --help|-h (optional)")
+    IO.puts("\r\nMode <getStats> arguments:")
+
+    IO.puts(
+      "   {bq_table_root, :string, :required} {output_file_suffix, :string, :required} {working_directory, :string, :optional} --file_mode|-f"
+    )
+
+    IO.puts(
+      "      bq_table_root:           the BQ tables suffix string/Kafka topic suffix string (e.g. barcelona_mfg)"
+    )
+
+    IO.puts(
+      "      output_file_suffix:      output file suffix (e.g. ingest-phase-1-stats.<suffix>.csv"
+    )
+
+    IO.puts("      working_directory:       where to put/read csv files etc., defaults to './'")
+
     IO.puts("\r\nMode <copyBucket> arguments:")
 
     IO.puts(
